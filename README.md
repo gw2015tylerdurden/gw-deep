@@ -1,4 +1,4 @@
-# gw-deep
+# GravitySpy Dataset
 
 ## Setup dependencies
 
