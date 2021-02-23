@@ -17,19 +17,19 @@ $ conda install pandas seaborn; conda install -c conda-forge wandb; pip insrall 
 ```
 
 ---
-or install into <existing_env>. (python >= 3.6)
+Or install into <existing_env>. (python >= 3.6)
 
 ```
 $ conda activate <existing_env>; conda install --file requirements.txt -c conda-forge -c pytorch
 ```
 
-# Dataset To HDF5 format
+# Convert dataset To HDF5 format
 
 ```
-$ python scripts/setup_dataset.py [dataset dir] output_filename.h5
+$ python scripts/setup_dataset.py <dataset dir> output_filename.h5
 ```
 
-# config file
+# configure yaml file
 you should to configure {vae, iic}.yaml before run. 
 
 # Run vae
