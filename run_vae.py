@@ -91,7 +91,7 @@ def main(args):
             losses += np.array([loss.item(), bce.item(), kl_gauss.item()])
             num_samples += len(x)
         losses /= num_samples
-        if args.is_output_wandb:
+        if args.wandb.is_output:
             wandb.log(dict(total_train=losses[0], bce_train=losses[1], kl_train=losses[2]))
         else:
             logger.update(total_train=losses[0], bce_train=losses[1], kl_train=losses[2])
@@ -114,12 +114,12 @@ def main(args):
                     losses += np.array([loss.item(), bce.item(), kl_gauss.item()])
                     num_samples += len(x)
                 losses /= num_samples
-                if args.is_output_wandb:
+                if args.wandb.is_output:
                     wandb.log(dict(total_eval=losses[0], bce_eval=losses[1], kl_eval=losses[2]))
                 else:
                     logger.update(total_eval=losses[0], bce_eval=losses[1], kl_eval=losses[2])
-                                for key, value in logger.items():
-                logger.save(key, epoch, f"{key}_e{epoch}.png", xlabel="epoch", ylabel=key, xlim=(0, epoch))
+                    for key, value in logger.items():
+                        logger.save(key, epoch, f"{key}_e{epoch}.png", xlabel="epoch", ylabel=key, xlim=(0, epoch))
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ gpu:
 trained_model_file: vae_e100.pt
 
 wandb:
-  is_output_wand: true
+  is_output: true
   project: gw-deep
   group: vae
   name: vae
