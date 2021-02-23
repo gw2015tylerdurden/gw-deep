@@ -1,5 +1,6 @@
 import os
 import hydra
+import wandb
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,8 +19,16 @@ plt.rcParams["lines.markersize"] = 6.0
 plt.rc("legend", fontsize=10)
 
 
+def wandb_init(args):
+    wandb.init(project=args.project, group=args.group)
+    wandb.run.name = args.name + "_" + wandb.run.name
+
+
 @hydra.main(config_path="config", config_name="vae")
 def main(args):
+
+    wandb_init(args.wandb)
+    wandb.config.update(F.flatten(args))
 
     transform = tf.Compose(
         [
@@ -82,7 +91,10 @@ def main(args):
             losses += np.array([loss.item(), bce.item(), kl_gauss.item()])
             num_samples += len(x)
         losses /= num_samples
-        logger.update(total_train=losses[0], bce_train=losses[1], kl_train=losses[2])
+        if args.is_output_wandb:
+            wandb.log(dict(total_train=losses[0], bce_train=losses[1], kl_train=losses[2]))
+        else:
+            logger.update(total_train=losses[0], bce_train=losses[1], kl_train=losses[2])
 
         if epoch % args.save_itvl == 0:
             model_file = f"vae_e{epoch}.pt"
@@ -102,9 +114,11 @@ def main(args):
                     losses += np.array([loss.item(), bce.item(), kl_gauss.item()])
                     num_samples += len(x)
                 losses /= num_samples
-                logger.update(total_eval=losses[0], bce_eval=losses[1], kl_eval=losses[2])
-
-            for key, value in logger.items():
+                if args.is_output_wandb:
+                    wandb.log(dict(total_eval=losses[0], bce_eval=losses[1], kl_eval=losses[2]))
+                else:
+                    logger.update(total_eval=losses[0], bce_eval=losses[1], kl_eval=losses[2])
+                                for key, value in logger.items():
                 logger.save(key, epoch, f"{key}_e{epoch}.png", xlabel="epoch", ylabel=key, xlim=(0, epoch))
 
 
