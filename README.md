@@ -1,4 +1,10 @@
 # GravitySpy Dataset
+   - https://zenodo.org/record/1476156
+     - trainingsetv1d0.tar.gz
+
+   - https://www.kaggle.com/tentotheminus9/gravity-spy-gravitational-waves
+     - archive.zip
+
 
 ## Setup dependencies
 
