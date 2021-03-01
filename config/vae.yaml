@@ -1,5 +1,7 @@
 verbose: True
-dataset_path: /home/gen.ueshima/gen/workspace/github/GravitySpy/processed/dataset_small.h5
+dataset_path: /DATAPATH
+model_dir: /MODELPATH
+
 labels: [1080Lines, 1400Ripples, Air_Compressor, Blip,
          Chirp, Extremely_Loud, Helix, Koi_Fish,
          Light_Modulation, Low_Frequency_Burst, Low_Frequency_Lines, No_Glitch,
@@ -16,7 +18,7 @@ batch_size: 96
 num_train_step: 100
 save_itvl: 50
 eval_itvl: 5
-model_dir: /home/gen.ueshima/gen/workspace/github
+
 
 gpu:
   train: 0
