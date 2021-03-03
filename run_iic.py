@@ -67,7 +67,7 @@ def main(args):
             raise FileNotFoundError(f"Model file does not exist: {pretrained_model_file}")
 
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
-    logger = logging.LossLogger()
+    logger = logging.LossLogger(args)
     for epoch in range(args.num_epoch):
         print(f"training at epoch {epoch}...")
         model.train()
@@ -90,7 +90,7 @@ def main(args):
             torch.save(model.state_dict(), os.path.join(args.model_dir, model_file))
             print(f"Model parameters are saved to {model_file}.")
 
-        if epoch % args.eval_itvl == 0:
+        if (epoch % args.eval_itvl == 0) and (args.wandb.is_output == False):
             for key, value in logger.items():
                 logger.save(key, epoch, f"{key}_e{epoch}.png", xlabel="epoch", ylabel=key, xlim=(0, epoch))
 

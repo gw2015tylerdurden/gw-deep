@@ -36,6 +36,7 @@ pretrained_model_file: vae_e0.pt
 trained_model_file: iic_e100.pt
 
 wandb:
+  is_output: true
   project: gw-deep
   group: iic
   name: iic
