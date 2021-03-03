@@ -28,6 +28,8 @@ $ conda activate <existing_env>; conda install --file requirements.txt -c conda-
 ```
 $ python scripts/setup_dataset.py <dataset dir> output_filename.h5
 ```
+ - HDFView
+   - https://www.hdfgroup.org/downloads/hdfview/
 
 # configure yaml file
 you should to configure {vae, iic}.yaml before run. 

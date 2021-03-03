@@ -1,6 +1,12 @@
-verbose: True
+
+hydra:
+  run:
+    dir: outputs/vae/${now:%Y-%m-%d}/${now:%H-%M-%S}
+model_dir: models
+
 dataset_path: /DATAPATH
-model_dir: /MODELPATH
+
+verbose: True
 
 labels: [1080Lines, 1400Ripples, Air_Compressor, Blip,
          Chirp, Extremely_Loud, Helix, Koi_Fish,
@@ -8,6 +14,7 @@ labels: [1080Lines, 1400Ripples, Air_Compressor, Blip,
          None_of_the_Above, Paired_Doves, Power_Line, Repeating_Blips,
          Scattered_Light, Scratchy, Tomte, Violin_Mode,
          Wandering_Line, Whistle]
+
 random_state: 123
 in_channels: 4
 train_size: 0.8

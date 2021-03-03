@@ -66,6 +66,10 @@ def main(args):
     model = models.VAE(args.in_channels, args.z_dim).to(device)
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
     logger = logging.LossLogger(args)
+    # cwd is hydra.run.dir in yaml config
+    model_dir = os.getcwd() + '/' + args.model_dir
+    if os.path.exists(model_dir) == False:
+        os.mkdir(model_dir)
 
     for epoch in range(args.num_epoch):
         print(f"training at epoch {epoch}...")
@@ -86,7 +90,7 @@ def main(args):
 
         if epoch % args.save_itvl == 0:
             model_file = f"vae_e{epoch}.pt"
-            torch.save(model.state_dict(), os.path.join(args.model_dir, model_file))
+            torch.save(model.state_dict(), os.path.join(model_dir, model_file))
             print(f"Model parameters are saved to {model_file}.")
 
         if epoch % args.eval_itvl == 0:
