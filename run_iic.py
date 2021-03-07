@@ -63,7 +63,7 @@ def main(args):
         try:
             model.load_state_dict_part(torch.load(args.pretrained_model_file))
         except:
-            raise FileNotFoundError(f"Model file does not exist: {pretrained_model_file}")
+            raise FileNotFoundError(f"Model file does not exist: {args.pretrained_model_file}")
 
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
     logger = logging.LossLogger(args)
