@@ -60,9 +60,8 @@ def main(args):
         args.in_channels, num_classes=args.num_classes, num_classes_over=args.num_classes_over, z_dim=args.z_dim, num_heads=args.num_heads
     ).to(device)
     if args.pretrained:
-        pretrained_model_file = os.path.join(args.model_dir, args.pretrained_model_file)
         try:
-            model.load_state_dict_part(torch.load(pretrained_model_file))
+            model.load_state_dict_part(torch.load(args.pretrained_model_file))
         except:
             raise FileNotFoundError(f"Model file does not exist: {pretrained_model_file}")
 
