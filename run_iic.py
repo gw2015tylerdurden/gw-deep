@@ -66,11 +66,11 @@ def main(args):
             raise FileNotFoundError(f"Model file does not exist: {args.pretrained_model_file}")
 
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
-    logger = logging.LossLogger(args)
     # cwd is hydra.run.dir in yaml config
-    model_dir = os.getcwd() + '/' + args.model_dir
+   args.current_work_directory = model_dir = os.getcwd() + '/' + args.model_dir
     if os.path.exists(model_dir) == False:
         os.mkdir(model_dir)
+    logger = logging.LossLogger(args)
 
     for epoch in range(args.num_epoch):
         print(f"training at epoch {epoch}...")

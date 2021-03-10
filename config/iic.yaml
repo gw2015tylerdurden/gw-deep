@@ -40,3 +40,4 @@ wandb:
   project: gw-deep
   group: iic
   name: iic
+  cwd: current_work_directory

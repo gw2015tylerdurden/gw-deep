@@ -39,3 +39,4 @@ wandb:
   project: gw-deep
   group: vae
   name: vae
+  cwd: current_work_directory

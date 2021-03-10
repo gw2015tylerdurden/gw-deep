@@ -65,11 +65,11 @@ def main(args):
 
     model = models.VAE(args.in_channels, args.z_dim).to(device)
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
-    logger = logging.LossLogger(args)
     # cwd is hydra.run.dir in yaml config
-    model_dir = os.getcwd() + '/' + args.model_dir
+    args.current_work_directory = model_dir = os.getcwd() + '/' + args.model_dir
     if os.path.exists(model_dir) == False:
         os.mkdir(model_dir)
+    logger = logging.LossLogger(args)
 
     for epoch in range(args.num_epoch):
         print(f"training at epoch {epoch}...")
