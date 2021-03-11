@@ -52,11 +52,12 @@ def main(args):
         device = torch.device("cpu")
 
     model = models.VAE(args.in_channels, args.z_dim).to(device)
-    model_file = os.path.join(args.model_dir, args.trained_model_file)
+    figure_output_dir = os.path.dirname(args.trained_model_file)
+    figure_model_epoch = os.path.basename(args.trained_model_file).split('.pt')[0]
     try:
-        model.load_state_dict_part(torch.load(model_file))
+        model.load_state_dict_part(torch.load(args.trained_model_file))
     except:
-        raise FileNotFoundError(f"Model file does not exist: {model_file}")
+        raise FileNotFoundError(f"Model file does not exist: {args.trained_model_file}")
 
     z, y = [], []
     model.eval()
@@ -81,7 +82,7 @@ def main(args):
     ax.legend(bbox_to_anchor=(1.01, 1.0), loc="upper left")
     ax.set_aspect(1.0 / ax.get_data_ratio())
     plt.tight_layout()
-    plt.savefig(f"z_tsne.png")
+    plt.savefig(figure_output_dir + '/' + figure_model_epoch + "_z_tsne.png")
     plt.close()
 
 
