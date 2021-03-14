@@ -64,10 +64,12 @@ def main(args):
         args.in_channels, num_classes=args.num_classes, num_classes_over=args.num_classes_over, z_dim=args.z_dim, num_heads=args.num_heads
     ).to(device)
     model_file = os.path.join(args.model_dir, args.trained_model_file)
+    figure_output_dir = os.path.dirname(args.trained_model_file)
+    figure_model_epoch = os.path.basename(args.trained_model_file).split('.pt')[0]
     try:
-        model.load_state_dict_part(torch.load(model_file))
+        model.load_state_dict_part(torch.load(args.trained_model_file))
     except:
-        raise FileNotFoundError(f"Model file does not exist: {model_file}")
+        raise FileNotFoundError(f"Model file does not exist: {args.trained_model_file}")
 
     py, pw, z, y = [], [], [], []
     model.eval()
@@ -103,7 +105,7 @@ def main(args):
         plt.xlabel("new labels")
         plt.ylabel("true labels")
         plt.tight_layout()
-        plt.savefig(f"cm_{i}.png", dpi=300)
+        plt.savefig(figure_output_dir + '/' + figure_model_epoch + '_' + f"cm_{i}.png", dpi=300)
         plt.close()
 
         fig, ax = plt.subplots()
@@ -121,7 +123,7 @@ def main(args):
         plt.xlabel("new labels (overclustering)")
         plt.ylabel("true labels")
         plt.tight_layout()
-        plt.savefig(f"cm_over_{i}.png", dpi=300)
+        plt.savefig(figure_output_dir + '/' + figure_model_epoch + '_' + f"cm_over_{i}.png", dpi=300)
         plt.close()
 
 
