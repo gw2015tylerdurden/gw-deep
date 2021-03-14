@@ -67,7 +67,7 @@ def main(args):
 
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
     # cwd is hydra.run.dir in yaml config
-   args.current_work_directory = model_dir = os.getcwd() + '/' + args.model_dir
+    args.wandb.cwd = model_dir = os.getcwd() + '/' + args.model_dir
     if os.path.exists(model_dir) == False:
         os.mkdir(model_dir)
     logger = logging.LossLogger(args)
