@@ -126,6 +126,5 @@ def main(args):
         plt.savefig(figure_output_dir + '/' + figure_model_epoch + '_' + f"cm_over_{i}.png", dpi=300)
         plt.close()
 
-
 if __name__ == "__main__":
     main()

@@ -85,6 +85,5 @@ def main(args):
     plt.savefig(figure_output_dir + '/' + figure_model_epoch + "_z_tsne.png")
     plt.close()
 
-
 if __name__ == "__main__":
     main()

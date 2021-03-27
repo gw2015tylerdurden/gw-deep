@@ -71,7 +71,7 @@ def main(args):
         os.mkdir(model_dir)
     logger = logging.LossLogger(args)
 
-    for epoch in range(args.num_epoch):
+    for epoch in range(args.num_epoch + 1):
         print(f"training at epoch {epoch}...")
         model.train()
         num_samples = 0

@@ -85,15 +85,19 @@ class IIC(BaseModule):
             return w
 
     def mutual_info(self, x, y, lam=1.0, eps=1e-8, reduction="mean"):
-        p = (x.unsqueeze(2) * y.unsqueeze(1)).sum(0)
-        p = ((p + p.permute(1, 0, 2)) / 2) / p.sum()
-        p[(p < eps).data] = eps
-        _, k, m = x.shape
-        pi = p.sum(dim=1).view(k, -1).expand(k, k, m).pow(lam)
-        pj = p.sum(dim=0).view(k, -1).expand(k, k, m).pow(lam)
+        P = (x.unsqueeze(2) * y.unsqueeze(1)).sum(0)
+        # P is symetrc matrix. P = (P + P^T) / 2. P is (C * C) matrix. C: output number of classes
+        # Sicnce P is sumed by minibatch M, i.e. P = (C * M) * (C * M)^T,
+        # so divide it by minibatch to normalize P. minibatch is P.sum(0).sum(0)
+        P = ((P + P.permute(1, 0, 2)) / 2) / P.sum(0).sum(0)
+        P[(P < eps).data] = eps
+        # x.shape is (C * C) * classifers
+        _, C, num_classifers = x.shape
+        Pi = P.sum(dim=1).view(C, 1, num_classifers).expand(C, C, num_classifers).pow(lam)
+        Pj = P.sum(dim=0).view(1, C, num_classifers).expand(C, C, num_classifers).pow(lam)
         if reduction == "mean":
-            return (p * (torch.log(pi) + torch.log(pj) - torch.log(p))).sum() / m
+            return (P * (torch.log(Pi) + torch.log(Pj) - torch.log(P))).sum() / num_classifers
         elif reduction == "sum":
-            return (p * (torch.log(pi) + torch.log(pj) - torch.log(p))).sum()
+            return (P * (torch.log(Pi) + torch.log(Pj) - torch.log(P))).sum()
         else:
-            return (p * (torch.log(pi) + torch.log(pj) - torch.log(p))).sum([0, 1])
+            return (P * (torch.log(Pi) + torch.log(Pj) - torch.log(P))).sum([0, 1])

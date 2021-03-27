@@ -72,7 +72,7 @@ def main(args):
         os.mkdir(model_dir)
     logger = logging.LossLogger(args)
 
-    for epoch in range(args.num_epoch):
+    for epoch in range(args.num_epoch + 1):
         print(f"training at epoch {epoch}...")
         model.train()
         num_samples = 0
@@ -87,7 +87,8 @@ def main(args):
             losses += np.array([loss.item(), mi.item(), mi_over.item()])
             num_samples += len(x)
         losses /= num_samples
-        logger.update(total_train=losses[0], mi_train=losses[1], mi_over_train=losses[2])
+        # multiply by minus to see the maximum value of mutual information
+        logger.update(total_train=-losses[0], mi_train=-losses[1], mi_over_train=-losses[2])
 
         if epoch % args.save_itvl == 0:
             model_file = f"iic_e{epoch}.pt"
