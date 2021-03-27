@@ -75,6 +75,7 @@ def main(args):
     for epoch in range(args.num_epoch + 1):
         print(f"training at epoch {epoch}...")
         model.train()
+        num_samples = 0
         losses = np.zeros(3)
         for (x, x_), _ in tqdm(train_loader):
             x, x_ = x.to(device, non_blocking=True), x_.to(device, non_blocking=True)
@@ -83,7 +84,9 @@ def main(args):
             optim.zero_grad()
             loss.backward()
             optim.step()
-            losses = np.array([loss.item(), mi.item(), mi_over.item()])
+            losses += np.array([loss.item(), mi.item(), mi_over.item()])
+            num_samples += len(x)
+        losses /= num_samples
         # multiply by minus to see the maximum value of mutual information
         logger.update(total_train=-losses[0], mi_train=-losses[1], mi_over_train=-losses[2])
 
