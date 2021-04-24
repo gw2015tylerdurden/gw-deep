@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import torchvision.transforms as tf
 from collections import defaultdict
 from tqdm import tqdm
-
 from sklearn.manifold import TSNE
 
 import src.data.datasets as datasets
@@ -18,6 +17,44 @@ import src.utils.logging as logging
 plt.style.use("seaborn-poster")
 plt.rcParams["lines.markersize"] = 6.0
 plt.rc("legend", fontsize=10)
+
+def plotReconsructImages(input, output, save_figure_path, numplots=10):
+
+    _, C, _, _ = input.shape
+    try:
+        # shuffle and get first numplots indices of input
+        indices = torch.randperm(len(input))[:numplots]
+        x_random_sample     = input[indices].cpu().numpy()
+        x_rec_random_sample = output[indices].cpu().numpy()
+
+        # numplots input and output, i.e. numplots *=2
+        fig, ax = plt.subplots(nrows=numplots*2, ncols=C, figsize=(numplots*1.5, numplots*1.5), sharex=True, sharey=True, tight_layout=True)
+        for sample in range(numplots):
+            x_sample     = x_random_sample[sample]
+            x_rec_sample = x_rec_random_sample[sample]
+
+            for channel in range(C):
+                # [2*sample, xxx] is for input, [2*sample+1, xxx] is for output
+                x     = x_sample[channel]
+                x_rec = x_rec_sample[channel]
+
+                # plots row 2-images
+                ax1 = ax[2*sample,     channel]
+                ax2 = ax[(2*sample)+1, channel]
+
+                # settigns for visualization
+                ax1.axis("off")
+                ax2.axis("off")
+
+                # plot
+                ax1.imshow(x)
+                ax2.imshow(x_rec)
+
+        plt.savefig(save_figure_path + "_reconstruct.png")
+        plt.close()
+
+    except:
+        raise ValueError(f"plot Reconsruct Images failed")
 
 
 @hydra.main(config_path="config", config_name="vae")
@@ -54,6 +91,7 @@ def main(args):
     model = models.VAE(args.in_channels, args.z_dim).to(device)
     figure_output_dir = os.path.dirname(args.trained_model_file)
     figure_model_epoch = os.path.basename(args.trained_model_file).split('.pt')[0]
+    save_figure_path = figure_output_dir + '/' + figure_model_epoch
     try:
         model.load_state_dict_part(torch.load(args.trained_model_file))
     except:
@@ -61,14 +99,20 @@ def main(args):
 
     z, y = [], []
     model.eval()
+    is_plot_reconstruct = True
     with torch.no_grad():
         for x, target in tqdm(test_loader):
             x = x.to(device, non_blocking=True)
-            z_m, _ = model.params(x)
+            z_m, x_rec = model.params(x)
             z.append(z_m)
             y.append(target)
+            # plot once
+            if is_plot_reconstruct:
+                plotReconsructImages(x, x_rec, save_figure_path)
+                is_plot_reconstruct = False
     z = torch.cat(z).cpu().numpy()
     y = torch.cat(y).cpu().numpy().astype(int)
+
 
     print(f"Plotting 2D latent features with true labels...")
     z_tsne = TSNE(n_components=2, random_state=args.random_state).fit(z).embedding_
@@ -82,8 +126,9 @@ def main(args):
     ax.legend(bbox_to_anchor=(1.01, 1.0), loc="upper left")
     ax.set_aspect(1.0 / ax.get_data_ratio())
     plt.tight_layout()
-    plt.savefig(figure_output_dir + '/' + figure_model_epoch + "_z_tsne.png")
+    plt.savefig(output_image_path + "_z_tsne.png")
     plt.close()
+
 
 if __name__ == "__main__":
     main()
