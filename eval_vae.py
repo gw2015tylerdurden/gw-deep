@@ -18,7 +18,7 @@ plt.style.use("seaborn-poster")
 plt.rcParams["lines.markersize"] = 6.0
 plt.rc("legend", fontsize=10)
 
-def plotReconsructImages(input, output, save_figure_path, numplots=10):
+def plotReconsructImages(input, output, save_figure_path, numplots=4):
 
     _, C, _, _ = input.shape
     try:
@@ -126,7 +126,7 @@ def main(args):
     ax.legend(bbox_to_anchor=(1.01, 1.0), loc="upper left")
     ax.set_aspect(1.0 / ax.get_data_ratio())
     plt.tight_layout()
-    plt.savefig(output_image_path + "_z_tsne.png")
+    plt.savefig(save_figure_path + "_z_tsne.png")
     plt.close()
 
 
