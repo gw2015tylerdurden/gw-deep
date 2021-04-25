@@ -30,11 +30,30 @@ class VAE(BaseModule):
         return mean, x_rec
 
     def bce(self, x_rec: torch.Tensor, x: torch.Tensor):
-        b, c, h, w = x.shape
+        # Minibatch size, Channels, Height, Width
+        M, C, H, W = x.shape
         bce = F.binary_cross_entropy_with_logits(x_rec, x, reduction="sum")
-        return bce / c / w / h
+        return bce / C / W / H
+
+    def bernoulli(self, x_rec: torch.Tensor, x: torch.Tensor):
+        '''
+        instable caclulation. loss becomes inf
+        '''
+        M, C, H, W = x.shape
+        sig_x_rec = x_rec.sigmoid()
+        correct_bern = -torch.sum(x * torch.log(sig_x_rec)) / C / H / W
+        incorrect_bern = -torch.sum((1 - x) * torch.log(1 - sig_x_rec)) / C / H / W
+        return correct_bern, incorrect_bern
+
+   def mse(self, x_rec: torch.Tensor, x: torch.Tensor):
+        # Minibatch size, Channels, Height, Width
+        M, C, H, W = x.shape
+        # divided only M, not C,H,W. MSE value should be a distance in R^{C*H*W}
+        return torch.sum((x_rec - x) ** 2) / M
 
     def kl_gauss(self, mean: torch.Tensor, logvar: torch.Tensor):
-        b, d = mean.shape
+        # Minibatch size, J: dimension of latent space
+        M, J = mean.shape
         kl = -0.5 * torch.sum(1 + logvar - torch.pow(mean, 2) - logvar.exp())
-        return kl / d
+        # divided only M, not J. D_kl should be a divergence in R^{J}
+        return kl / J
