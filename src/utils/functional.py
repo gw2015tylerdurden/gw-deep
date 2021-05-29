@@ -1,9 +1,13 @@
 import torch
+import numpy as np
 import matplotlib.colors as colors
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import colorsys
 from collections import abc
+from scipy.spatial.distance import pdist, squareform
+from fastcluster import linkage
+import re
 
 
 def get_mean_std(loader):
@@ -40,3 +44,88 @@ def flatten(d, parent_key="", sep="."):
         else:
             items.append((new_key, v))
     return dict(items)
+
+
+def acronym(name):
+    name = re.sub(
+        r"(^[0-9a-zA-Z]{5,}(?=_))|((?<=_)[0-9a-zA-Z]*)",
+        lambda m: str(m.group(1) or "")[:3] + str(m.group(2) or "")[:1],
+        name,
+    )
+    name = name.replace("_", ".")
+    return name
+
+
+def seriation(Z, N, cur_index):
+    """
+    input:
+        - Z is a hierarchical tree (dendrogram)
+        - N is the number of points given to the clustering process
+        - cur_index is the position in the tree for the recursive traversal
+    output:
+        - order implied by the hierarchical tree Z
+
+    seriation computes the order implied by a hierarchical tree (dendrogram)
+    """
+    if cur_index < N:
+        return [cur_index]
+    else:
+        left = int(Z[cur_index - N, 0])
+        right = int(Z[cur_index - N, 1])
+        return seriation(Z, N, left) + seriation(Z, N, right)
+
+
+def compute_serial_matrix(X, method="ward"):
+    """
+    input:
+        - X is a square matrix.
+        - method = ["ward","single","average","complete"]
+    output:
+        - seriated_dist is the input matrix,
+          but with re-ordered rows and columns
+          according to the seriation, i.e. the
+          order implied by the hierarchical tree
+        - res_order is the order implied by
+          the hierarhical tree
+        - res_linkage is the hierarhical tree (dendrogram)
+
+    compute_serial_matrix transforms a distance matrix into
+    a sorted distance matrix according to the order implied
+    by the hierarchical tree (dendrogram)
+    """
+    N = len(X)
+    seriated_dist = np.zeros((N, N))
+
+    # get condenced distance matrix(shape is vector[N*(N+1)//2 - N]) from distance matrix(X)
+    # note:squareform(pdist(X)) returns symmetry matrix which diagonals are 0
+    condence_distance_matrix = pdist(X)
+    res_linkage = linkage(condence_distance_matrix, method=method, preserve_input=True)
+    res_order = seriation(res_linkage, N, N + N - 2)
+    a, b = np.triu_indices(N, k=1)
+    seriated_dist[a, b] = X[[res_order[i] for i in a], [res_order[j] for j in b]]
+    seriated_dist[b, a] = seriated_dist[a, b]
+
+    return seriated_dist, res_order, res_linkage
+
+def cosine_similarity(x):
+    x = x / x.norm(dim=-1)[:, None]
+    return torch.mm(x, x.transpose(0, 1))
+
+def sample_from_each_class(y, sample_top_similarity_num=10, random_seed=42):
+    uniq_levels = np.unique(y)
+    uniq_counts = {level: sum(y == level) for level in uniq_levels}
+
+    if not random_seed is None:
+        np.random.seed(random_seed)
+
+    # find observation index of each class levels
+    groupby_levels = {}
+    for ii, level in enumerate(uniq_levels):
+        obs_idx = [idx for idx, val in enumerate(y) if val == level]
+        groupby_levels[level] = obs_idx
+    # oversampling on observations of each label
+    balanced = {}
+    for level, gb_idx in groupby_levels.items():
+        indices = np.random.choice(gb_idx, size=sample_top_similarity_num, replace=True).tolist()
+        balanced[level] = indices
+    return balanced
