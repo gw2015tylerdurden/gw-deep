@@ -2,6 +2,8 @@ import os
 import hydra
 import torch
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import torchvision.transforms as tf
 from collections import defaultdict
@@ -20,42 +22,37 @@ plt.rc("legend", fontsize=10)
 
 def plotReconsructImages(input, output, save_figure_path, numplots=4):
 
-    _, C, _, _ = input.shape
-    try:
-        # shuffle and get first numplots indices of input
-        indices = torch.randperm(len(input))[:numplots]
-        x_random_sample     = input[indices].cpu().numpy()
-        x_rec_random_sample = output[indices].cpu().numpy()
+    # output channle of image is 0[0.5sec]
+    channel = 0
+    # shuffle and get first numplots indices of input
+    indices = torch.randperm(len(input))[:numplots]
+    x_random_sample = input[indices].cpu().numpy()
+    x_rec_random_sample = output[indices].cpu().numpy()
 
-        # numplots input and output, i.e. numplots *=2
-        fig, ax = plt.subplots(nrows=numplots*2, ncols=C, figsize=(numplots*1.5, numplots*1.5), sharex=True, sharey=True, tight_layout=True)
-        for sample in range(numplots):
-            x_sample     = x_random_sample[sample]
-            x_rec_sample = x_rec_random_sample[sample]
+    # numplots input and output, i.e. numplots *=2
+    fig, ax = plt.subplots(nrows=numplots, ncols=2, figsize=(numplots*1.5, numplots*1.5), sharex=True, sharey=True, tight_layout=True)
+    for sample in range(numplots):
+        x_sample = x_random_sample[sample]
+        x_rec_sample = x_rec_random_sample[sample]
 
-            for channel in range(C):
-                # [2*sample, xxx] is for input, [2*sample+1, xxx] is for output
-                x     = x_sample[channel]
-                x_rec = x_rec_sample[channel]
+        # [2*sample, xxx] is for input, [2*sample+1, xxx] is for output
+        x = x_sample[channel]
+        x_rec = x_rec_sample[channel]
 
-                # plots row 2-images
-                ax1 = ax[2*sample,     channel]
-                ax2 = ax[(2*sample)+1, channel]
+        # plots row 2-images
+        ax1 = ax[sample, channel]
+        ax2 = ax[sample, channel + 1]
 
-                # settigns for visualization
-                ax1.axis("off")
-                ax2.axis("off")
+        # settigns for visualization
+        ax1.axis("off")
+        ax2.axis("off")
 
-                # plot
-                ax1.imshow(x)
-                ax2.imshow(x_rec)
+        # plot gray scale
+        ax1.imshow(x, cmap='gray', vmin=0, vmax=1, interpolation='none')
+        ax2.imshow(x_rec, cmap='gray', vmin=0, vmax=1, interpolation='none')
 
-        plt.savefig(save_figure_path + "_reconstruct.png")
-        plt.close()
-
-    except:
-        raise ValueError(f"plot Reconsruct Images failed")
-
+    plt.savefig(save_figure_path + "_reconstruct.png")
+    plt.close()
 
 @hydra.main(config_path="config", config_name="vae")
 def main(args):
@@ -88,7 +85,8 @@ def main(args):
     else:
         device = torch.device("cpu")
 
-    model = models.VAE(args.in_channels, args.z_dim).to(device)
+    is_output_gaussian = False
+    model = models.VAE(args.in_channels, args.z_dim, is_output_gaussian=is_output_gaussian).to(device)
     figure_output_dir = os.path.dirname(args.trained_model_file)
     figure_model_epoch = os.path.basename(args.trained_model_file).split('.pt')[0]
     save_figure_path = figure_output_dir + '/' + figure_model_epoch
@@ -115,7 +113,7 @@ def main(args):
 
 
     print(f"Plotting 2D latent features with true labels...")
-    z_tsne = TSNE(n_components=2, random_state=args.random_state).fit(z).embedding_
+    z_tsne = TSNE(n_components=2, perplexity=args.tsne_perplexity, n_iter=5000, random_state=args.random_state).fit(z).embedding_
     fig, ax = plt.subplots()
     cmap = F.segmented_cmap("tab10", num_classes)
     for i in range(num_classes):
@@ -125,8 +123,10 @@ def main(args):
             ax.scatter(z_tsne[idx, 0], z_tsne[idx, 1], color=c, label=args.labels[i], edgecolors=F.darken(c))
     ax.legend(bbox_to_anchor=(1.01, 1.0), loc="upper left")
     ax.set_aspect(1.0 / ax.get_data_ratio())
+    ax.set_xlabel('t-SNE component 1')
+    ax.set_ylabel('t-SNE component 2')
     plt.tight_layout()
-    plt.savefig(save_figure_path + "_z_tsne.png")
+    plt.savefig(save_figure_path + f"_z_tsne_perp{args.tsne_perplexity}.png", dpi=300)
     plt.close()
 
 
