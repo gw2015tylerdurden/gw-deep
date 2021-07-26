@@ -36,6 +36,7 @@ def main(args):
     target_transform = transforms.ToIndex(args.labels)
 
     dataset = datasets.HDF5(args.dataset_path, transform=transform, target_transform=target_transform)
+    # stratified split, split at the same ratio from each class
     train_set, test_set = dataset.split(train_size=args.train_size, random_state=args.random_state, stratify=dataset.targets)
     train_set.transform = augment
 
@@ -63,7 +64,7 @@ def main(args):
     else:
         device = torch.device("cpu")
 
-    model = models.VAE(args.in_channels, args.z_dim).to(device)
+    model = models.VAE(args.in_channels, args.z_dim, is_output_gaussian=True).to(device)
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
     # cwd is hydra.run.dir in yaml config
     args.wandb.cwd = model_dir = os.getcwd() + '/' + args.model_dir
@@ -78,15 +79,17 @@ def main(args):
         losses = np.zeros(3)
         for x, _ in tqdm(train_loader):
             x = x.to(device, non_blocking=True)
-            bce, kl_gauss = model(x)
-            loss = sum([bce, kl_gauss])
+            logp_xz, kl_gauss = model(x)
+            loss = sum([logp_xz, kl_gauss])
             optim.zero_grad()
             loss.backward()
             optim.step()
-            losses += np.array([loss.item(), bce.item(), kl_gauss.item()])
+            losses = np.array([loss.item(), logp_xz.item(), kl_gauss.item()])
             num_samples += len(x)
-        losses /= num_samples
-        logger.update(total_train=losses[0], bce_train=losses[1], kl_train=losses[2])
+        #losses /= num_samples
+        logger.update(total_train=losses[0],
+                      logp_xz_train=losses[1],
+                      kl_train=losses[2])
 
         if epoch % args.save_itvl == 0:
             model_file = f"vae_e{epoch}.pt"
@@ -96,18 +99,15 @@ def main(args):
         if epoch % args.eval_itvl == 0:
             print(f"evaluating at epoch {epoch}...")
             model.eval()
-            num_samples = 0
             with torch.no_grad():
                 losses = np.zeros(3)
                 for x, target in tqdm(test_loader):
                     x = x.to(device, non_blocking=True)
-                    bce, kl_gauss = model(x)
-                    loss = sum([bce, kl_gauss])
-                    losses += np.array([loss.item(), bce.item(), kl_gauss.item()])
-                    num_samples += len(x)
-                losses /= num_samples
-
-                logger.update(total_eval=losses[0], bce_eval=losses[1], kl_eval=losses[2])
+                    logp_xz, kl_gauss = model(x)
+                    loss = sum([logp_xz, kl_gauss])
+                    losses = np.array([loss.item(), logp_xz.item(), kl_gauss.item()])
+                #losses /= num_samples
+                logger.update(total_eval=losses[0], logp_xz_eval=losses[1], kl_eval=losses[2])
 
                 if args.wandb.is_output == False:
                     for key, value in logger.items():
