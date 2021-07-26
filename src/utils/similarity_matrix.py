@@ -11,26 +11,44 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from . import functional as F
 import random
 
+
 class SimilarityMatrix():
     def get_accuracy(self):
         """
-        calculate ensambled accuracy
+        calculate accuracy using confusion matrix that is made by spectral clustering
         """
-        indices = np.argmax(self.cm, axis=0)
+        indices = np.argmax(self.cmn, axis=0)
         n_true = 0
         for l, m in enumerate(indices):
-            cmi = self.cm[:, l]
+            cmi = self.cmn[:, l]
             n_true += cmi[m]
-        ensambled_acc = n_true / self.cm.sum()
-        return ensambled_acc
+        sc_acc = n_true / self.cmn.sum()
+        return sc_acc
+
+    # not yet...
+    def _get_precision(self):
+        indices = np.argmax(self.cmn, axis=1)
+        precision = []
+        for i in range(indices):
+            coli = self.cmn[:, i]
+            precision.append(coli / coli.sum())
+        return precision
+
+    def _get_recall(self):
+        indices = np.argmax(self.cmn, axis=0)
+        recall = []
+        for i in range(indices):
+            rowi = self.cmn[i, :]
+            recall.append(rowi / rowi.sum())
+        return recall
 
     def plot_results(self):
-        self._plot_ensambled_confusion_matrix()
-        self._plot_eighen_similarity_matrix()
-        self._plot_cosine_similarity_matirx()
+        self._plot_sc_confusion_matrix()
+        self._plot_matirx(self.affinity_matrix, "affinity")
+        self._plot_cosine_similarity_matirx(self.affinity_matrix)
 
     def plot_similarity_class(self, test_set, sample_top_similarity_num=5):
-        samples_pred = F.sample_from_each_class(self.pred_ensamble, sample_top_similarity_num)
+        samples_pred = F.sample_from_each_class(self.pred_sc_labels, sample_top_similarity_num)
         for i, (label, indices) in enumerate(samples_pred.items()):
             if i % 5 == 0:
                 fig, _ = plt.subplots()
@@ -73,73 +91,179 @@ class SimilarityMatrix():
         plt.savefig(self.filepath_part + f"_simrank.png", transparent=True, dpi=300)
         plt.close()
 
+    def plot_predicted_similarity_class(self, dataset, sample_top_similarity_num=5):
+        # random sample each pred class, [[0, data idx], ..., [C, data idx]]
+        #sample_each_pred_class = F.sample_from_each_class(self.pred_sc_labels, 1, np.random.randint(0, 256))
+
+        cossim = torch.nn.CosineSimilarity(dim=0)
+        for new_label_num in range(self.num_classes_expected):
+            if new_label_num % 5 == 0:
+                fig, ax = plt.subplots(nrows=sample_top_similarity_num, ncols=sample_top_similarity_num)
+
+            new_label_dataset = np.where(self.pred_sc_labels == new_label_num)[0] # for 1 dimension[0]
+            # select target rondomly
+            target_idx = new_label_dataset[np.random.randint(0, len(new_label_dataset) - 1)]
+            target_affinity_vector = torch.from_numpy(self.affinity_matrix[target_idx, :])
+            # find similarity indices of tatgrt_affinity_vector
+            affinity_ordered_newclass = []
+            for idx, dataset_idx in enumerate(new_label_dataset):
+                affinity_vector = torch.from_numpy(self.affinity_matrix[dataset_idx, :])
+                cosine_similarity = cossim(affinity_vector, target_affinity_vector)
+
+                affinity_ordered_newclass.append((dataset_idx, cosine_similarity))
+                #affinity_dataset_ordered = sorted(affinity_dataset_ordered, key=lambda x: x[1])
+                affinity_ordered_newclass.sort(key=lambda x: x[1], reverse=True)
+
+            cols = new_label_num % 5
+            sample = 0
+            for idx in range(sample_top_similarity_num):
+                # 0 is sample, 1 is most sim, 2 is 0.9 sim, ...
+                sample = idx
+                if idx > 1:
+                    target_similarity_value = 1.0 - (0.1 * idx)
+                    while(affinity_ordered_newclass[sample][1] > target_similarity_value):
+                        sample += 1
+                        if sample == len(affinity_ordered_newclass):
+                            sample = idx
+                            break
+
+                x, _ = dataset[affinity_ordered_newclass[sample][0]]
+                # plot 0.5sec glitch
+                ax[cols, idx].imshow(x[0])
+                ax[cols, idx].axis("off")
+                ax[cols, idx].margins(0)
+
+                if idx == 0:
+                    # target of new label data
+                    #ax.set_title(r"$x_{(%d)}$" % dataset_idx)
+                    ax[cols, idx].set_title(r"$label {(%d)}$" % new_label_num, fontsize=17)
+                else:
+                    # similarity data of target class
+                    # ax[cols, idx].set_title(r"data id[%d] %.2f" % (affinity_dataset_ordered[idx][0], affinity_dataset_ordered[idx][1]))
+                    ax[cols, idx].set_title(r"sim %.2f" % (affinity_ordered_newclass[sample][1]), fontsize=17)
+
+            if new_label_num % 5 == 4:
+                plt.subplots_adjust(wspace=0.05, top=0.92, bottom=0.05, left=0.05, right=0.95)
+                plt.savefig(self.filepath_part + f"_new_label_similar{new_label_num // 5}.png", transparent=True, dpi=300)
+                plt.close()
+            elif new_label_num == (self.num_classes_expected - 1):
+                plt.subplots_adjust(wspace=0.05, top=0.92, bottom=0.05, left=0.05, right=0.95)
+                plt.savefig(self.filepath_part + f"_new_label_similar{(new_label_num // 5) + 1}.png", transparent=True, dpi=300)
+                plt.close()
+
 
     def __init__(self, pred_y, true_y, output_filepath, num_classes, num_samples, labels, top_accuracy_classifier_id=0, random_state=123):
-        self.num_classes = num_classes
+        self.num_classes_expected = num_classes
         self.filepath_part = output_filepath
         self.targets = np.array([F.acronym(target) for target in labels])
-        self.__calculate_similarity_matrix(pred_y, true_y, num_samples, random_state)
+        self.__calculate_confusion_matrix(pred_y, true_y, num_samples, random_state)
 
-    def __calculate_similarity_matrix(self, pred_y, true_y, num_samples, random_state):
+    def __calculate_confusion_matrix(self, pred_y, true_y, num_samples, random_state):
         # make hyper_graph from output of classifiers. shape [dataset N, heads*self.num_classes]
         concat_predicted_matrix_dataset = torch.cat(pred_y).view(num_samples, -1).cpu().numpy().astype(float)
-        self.inferenced_square_matrix = F.cosine_similarity(torch.from_numpy(concat_predicted_matrix_dataset)).numpy()
-        # make inferenced square matrix using cosine similarity. shape[N, N]
-        self.eigs, self.eigv = scipy.linalg.eigh(self.inferenced_square_matrix)
-        self.distance_matrix, self.reordered, _ = F.compute_serial_matrix(self.inferenced_square_matrix)
-        sc = SpectralClustering(n_clusters=self.num_classes,
+        sc = SpectralClustering(n_clusters=self.num_classes_expected,
                                 random_state=random_state,
                                 assign_labels="discretize",
+                                # assign_labels="kmeans",
                                 affinity="rbf")
-        # generate labels which shape is [N, ]
-        self.pred_ensamble = sc.fit(self.eigv[:, -self.num_classes:]).labels_
-        cm = confusion_matrix(true_y, self.pred_ensamble, labels=list(range(self.num_classes)))
-        self.cm_labels = np.unique(np.concatenate([true_y, self.pred_ensamble]))
-        self.cm = cm[np.nonzero(np.isin(self.cm_labels, true_y))[0], :]
-        self.cmn = normalize(self.cm, axis=0)
+        spectral_cluster = sc.fit(concat_predicted_matrix_dataset)
+        # affinity_matrix_.shape is [N, N]
+        self.affinity_matrix = spectral_cluster.affinity_matrix_
+        # plot eigenvalue, not neccesary
+        #eigs, eigv = scipy.linalg.eigh(self.affinity_matrix)
+        #self._plot_eigenvalues_similarity_matrix(eigs)
 
+        # shape is [N, ]. array values are new class id.
+        self.pred_sc_labels = spectral_cluster.labels_
+        # confusion matrix is square [num_classes, num_classes]
+        cm_squared = confusion_matrix(true_y, self.pred_sc_labels, labels=list(range(self.num_classes_expected)))
+        # self.cm = cm_squared[np.nonzero(np.isin(np.arange(self.num_classes), true_y))[0], :]
+        # changes row num of cm to num of gravity spy labels, [22, num_classes]
+        cm = cm_squared[:len(self.targets), :]
+        self.cmn = normalize(cm, axis=0)
+        # print(self._get_precision())
+        # print(self._get_recall())
 
-    def _plot_ensambled_confusion_matrix(self):
+    def __old_calculate_confusion_matrix(self, pred_y, true_y, num_samples, random_state):
+        # make hyper_graph from output of classifiers. shape [dataset N, heads*self.num_classes]
+        concat_predicted_matrix_dataset = torch.cat(pred_y).view(num_samples, -1).cpu().numpy().astype(float)
+        # make inferenced square matrix using cosine similarity. shape[N, N]
+        inferenced_square_matrix = F.cosine_similarity(torch.from_numpy(concat_predicted_matrix_dataset)).numpy()
+        # eigenvalue and eigenvector
+        eigs, eigv = scipy.linalg.eigh(inferenced_square_matrix)
+        sc = SpectralClustering(n_clusters=self.num_classes_expected,
+                                random_state=random_state,
+                                assign_labels="discretize",
+                                # assign_labels="kmeans",
+                                affinity="rbf")
+        # choose num_classes of eigenvectors which are in ascending order, (last column vector is maximum)
+        spectral_cluster = sc.fit(eigv[:, -self.num_classes_expected:])
+        # shape is [N, ]. array values are new class id.
+        self.pred_sc_labels = spectral_cluster.labels_
+        # confusion matrix is square [num_classes, num_classes]
+        cm_squared = confusion_matrix(true_y, self.pred_sc_labels, labels=list(range(self.num_classes_expected)))
+        # self.cm = cm_squared[np.nonzero(np.isin(np.arange(self.num_classes), true_y))[0], :]
+        # changes row num of cm to num of gravity spy labels, [22, num_classes]
+        cm = cm_squared[:len(self.targets), :]
+        self.cmn = normalize(cm, axis=0)
+
+    def _plot_sc_confusion_matrix(self):
         fig, ax = plt.subplots()
         seaborn.heatmap(
             self.cmn,
             ax=ax,
-            annot=self.cm,
-            fmt="d",
+            # annot=self.cmn,  # annot=self.cm, # could not plot float values(self.cm)
+            # annot_kws={"fontsize": 8},
+            # fmt="d",
             linewidths=0.1,
             cmap="Greens",
-            cbar=False,
+            cbar=True,
+            cbar_kws={"aspect": 50, "pad": 0.01, "anchor": (0, 0.05)},
             yticklabels=self.targets,
-            xticklabels=self.cm_labels,
-            annot_kws={"fontsize": 8},
+            xticklabels=np.arange(self.num_classes_expected),
         )
         plt.yticks(rotation=45)
-        ax.set_title(r"confusion matrix y with q(y) ensembled with SC")
+        ax.set_title(r"confusion matrix using Spectral-Clustering")
         plt.tight_layout()
         plt.savefig(self.filepath_part + "_cm_sc.png", transparent=True, dpi=300)
         plt.close()
 
-    def _plot_eighen_similarity_matrix(self):
+    def _plot_eigenvalues_similarity_matrix(self, eigen_values):
         fig, ax = plt.subplots()
-        ax.plot(self.eigs[::-1])
-        ax.set_xlim(0, len(self.eigs) - 1)
-        ax.set_title("eigh values of similarity matrix ")
-        ax.set_xlabel("order")
+        ax.plot(eigen_values.reshape(-1))
+        ax.set_title("eigenvalues of dataset similarity matrix")
+        ax.set_xlabel("eigenvalues in ascending order")
         ax.set_ylabel("eigen values")
-        ax.set_xlim((0, 100 - 1))
         ax.set_yscale("log")
-        ax.set_ylim((1e-3, None))
         plt.tight_layout()
-        plt.savefig(self.filepath_part + "_eigen.png", transparent=True, dpi=300)
+        plt.savefig(self.filepath_part + "_eigen.png", dpi=300)
         plt.close()
 
-    def _plot_cosine_similarity_matirx(self):
+    def _plot_matirx(self, matrix, filename):
+        plt.pcolormesh(matrix)
+        plt.colorbar()
+        plt.gca().invert_yaxis()
+        plt.savefig(self.filepath_part + "_" + filename + ".png", dpi=300)
+        plt.close()
+
+
+    def _plot_cosine_similarity_matirx(self, matrix):
+        """
+        distance_matrix shows that how close each data is.
+        so this result helps to determine the true number of classes.
+        distance_reordered is sorted indecies in descending.
+        """
+        distance_matrix, distance_reordered, _ = F.compute_serial_matrix(matrix)
+        # sort predicted labels in distance
+        reordered_pred_sc_labels = self.pred_sc_labels[distance_reordered]
+
         fig = plt.figure()
         axs = ImageGrid(fig, 111, nrows_ncols=(2, 1), axes_pad=0)
-        axs[0].imshow(self.distance_matrix, aspect=1)
+        axs[0].imshow(distance_matrix, aspect=1)
+        # add newaxis to plot predicted labeles of glitches
+        axs[1].imshow(reordered_pred_sc_labels[np.newaxis, :], aspect=70, cmap=F.segmented_cmap("tab20c", self.num_classes_expected))
         axs[0].axis("off")
-        axs[1].imshow(self.pred_ensamble[self.reordered][np.newaxis, :], aspect=100, cmap=F.segmented_cmap("tab20b", self.num_classes))
         axs[1].axis("off")
-        axs[0].set_title("cosine similarity matrix with SC clusters")
+        axs[0].set_title("cosine similarity matrix using Spectral-Clustering")
         plt.savefig(self.filepath_part + "_simmat_sc.png", transparent=True, dpi=300)
         plt.close()

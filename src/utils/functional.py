@@ -111,17 +111,17 @@ def cosine_similarity(x):
     x = x / x.norm(dim=-1)[:, None]
     return torch.mm(x, x.transpose(0, 1))
 
-def sample_from_each_class(y, sample_top_similarity_num=10, random_seed=42):
-    uniq_levels = np.unique(y)
-    uniq_counts = {level: sum(y == level) for level in uniq_levels}
+def sample_from_each_class(pred_y_labels, sample_top_similarity_num=10, random_seed=42):
+    uniq_levels = np.unique(pred_y_labels)
+    uniq_counts = {level: sum(pred_y_labels == level) for level in uniq_levels}
 
-    if not random_seed is None:
+    if random_seed is not None:
         np.random.seed(random_seed)
 
     # find observation index of each class levels
     groupby_levels = {}
-    for ii, level in enumerate(uniq_levels):
-        obs_idx = [idx for idx, val in enumerate(y) if val == level]
+    for _, level in enumerate(uniq_levels):
+        obs_idx = [idx for idx, val in enumerate(pred_y_labels) if val == level]
         groupby_levels[level] = obs_idx
     # oversampling on observations of each label
     balanced = {}
