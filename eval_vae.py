@@ -30,7 +30,7 @@ def plotReconsructImages(input, output, save_figure_path, numplots=4):
     x_rec_random_sample = output[indices].cpu().numpy()
 
     # numplots input and output, i.e. numplots *=2
-    fig, ax = plt.subplots(nrows=numplots, ncols=2, figsize=(numplots*1.5, numplots*1.5), sharex=True, sharey=True, tight_layout=True)
+    fig, ax = plt.subplots(nrows=2, ncols=numplots, figsize=(numplots*1.5, numplots*1.5), sharex=True, sharey=True, tight_layout=True)
     for sample in range(numplots):
         x_sample = x_random_sample[sample]
         x_rec_sample = x_rec_random_sample[sample]
@@ -40,8 +40,8 @@ def plotReconsructImages(input, output, save_figure_path, numplots=4):
         x_rec = x_rec_sample[channel]
 
         # plots row 2-images
-        ax1 = ax[sample, channel]
-        ax2 = ax[sample, channel + 1]
+        ax1 = ax[0, sample]
+        ax2 = ax[1, sample]
 
         # settigns for visualization
         ax1.axis("off")
@@ -68,6 +68,16 @@ def main(args):
 
     dataset = datasets.HDF5(args.dataset_path, transform=transform, target_transform=target_transform)
     train_set, test_set = dataset.split(train_size=args.train_size, random_state=args.random_state, stratify=dataset.targets)
+
+    if True:
+        # reconstruct augmention image
+        augment = tf.Compose(
+            [
+                tf.RandomAffine(0, translate=(0.088, 0), fillcolor=None),
+                tf.CenterCrop(224),
+            ]
+        )
+        test_set.transform = augment
 
     test_loader = torch.utils.data.DataLoader(
         test_set,
