@@ -15,14 +15,14 @@ import random
 class SimilarityMatrix():
     def get_accuracy(self):
         """
-        calculate accuracy using confusion matrix that is made by spectral clustering
+        Let argmax of a element of colmun be correct label
         """
-        indices = np.argmax(self.cmn, axis=0)
+        indices = np.argmax(self.cm, axis=0)
         n_true = 0
         for l, m in enumerate(indices):
-            cmi = self.cmn[:, l]
+            cmi = self.cm[:, l]
             n_true += cmi[m]
-        sc_acc = n_true / self.cmn.sum()
+        sc_acc = n_true / self.cm.sum()
         return sc_acc
 
     # not yet...
@@ -102,7 +102,8 @@ class SimilarityMatrix():
 
             new_label_dataset = np.where(self.pred_sc_labels == new_label_num)[0] # for 1 dimension[0]
             # select target rondomly
-            target_idx = new_label_dataset[np.random.randint(0, len(new_label_dataset) - 1)]
+            random.seed()
+            target_idx = random.choice(new_label_dataset)
             target_affinity_vector = torch.from_numpy(self.affinity_matrix[target_idx, :])
             # find similarity indices of tatgrt_affinity_vector
             affinity_ordered_newclass = []
@@ -152,10 +153,14 @@ class SimilarityMatrix():
                 plt.close()
 
 
-    def __init__(self, pred_y, true_y, output_filepath, num_classes, num_samples, labels, top_accuracy_classifier_id=0, random_state=123):
+    def __init__(self, pred_y, true_y, output_filepath, num_classes, num_samples, labels, top_accuracy_classifier_id=0, random_state=123, is_acronym=False):
         self.num_classes_expected = num_classes
         self.filepath_part = output_filepath
-        self.targets = np.array([F.acronym(target) for target in labels])
+        if is_acronym:
+            self.target_labels_name = np.array([F.acronym(target) for target in labels])
+        else:
+            self.target_labels_name = labels
+
         self.__calculate_confusion_matrix(pred_y, true_y, num_samples, random_state)
 
     def __calculate_confusion_matrix(self, pred_y, true_y, num_samples, random_state):
@@ -179,8 +184,9 @@ class SimilarityMatrix():
         cm_squared = confusion_matrix(true_y, self.pred_sc_labels, labels=list(range(self.num_classes_expected)))
         # self.cm = cm_squared[np.nonzero(np.isin(np.arange(self.num_classes), true_y))[0], :]
         # changes row num of cm to num of gravity spy labels, [22, num_classes]
-        cm = cm_squared[:len(self.targets), :]
-        self.cmn = normalize(cm, axis=0)
+        self.cm = cm_squared[:len(self.target_labels_name), :]
+        #self.cmn = normalize(self.cm, norm='l2', axis=0)
+        self.cmn = normalize(self.cm, norm='l1', axis=0)
         # print(self._get_precision())
         # print(self._get_recall())
 
@@ -204,27 +210,42 @@ class SimilarityMatrix():
         cm_squared = confusion_matrix(true_y, self.pred_sc_labels, labels=list(range(self.num_classes_expected)))
         # self.cm = cm_squared[np.nonzero(np.isin(np.arange(self.num_classes), true_y))[0], :]
         # changes row num of cm to num of gravity spy labels, [22, num_classes]
-        cm = cm_squared[:len(self.targets), :]
+        cm = cm_squared[:len(self.target_labels_name), :]
         self.cmn = normalize(cm, axis=0)
 
     def _plot_sc_confusion_matrix(self):
         fig, ax = plt.subplots()
+        # classified datanum of each label
+        datanum_each_label = [str(i) for i in self.cm.sum(axis=0)]
+
+        # add row
+        plot_data = np.insert(self.cmn, 0, np.zeros(len(datanum_each_label)), axis=0)
+        plot_labels = np.insert(self.target_labels_name, 0, '')
+
+        threshold_plot_rate = 0.1
+        round_rate = np.round(self.cmn, decimals=2)
+        annot_str = np.where(round_rate >= threshold_plot_rate, round_rate, '')
+        annot_str = np.insert(annot_str, 0, datanum_each_label, axis=0)
         seaborn.heatmap(
-            self.cmn,
+            data=plot_data,
             ax=ax,
-            # annot=self.cmn,  # annot=self.cm, # could not plot float values(self.cm)
-            # annot_kws={"fontsize": 8},
-            # fmt="d",
+            #annot=self.cmn*self.cmn,
+            annot=annot_str,
+            annot_kws={"fontsize": 8},
+            #fmt=".1f",
+            fmt='',
             linewidths=0.1,
             cmap="Greens",
             cbar=True,
             cbar_kws={"aspect": 50, "pad": 0.01, "anchor": (0, 0.05)},
-            yticklabels=self.targets,
+            yticklabels=plot_labels,
             xticklabels=np.arange(self.num_classes_expected),
         )
-        plt.yticks(rotation=45)
-        ax.set_title(r"confusion matrix using Spectral-Clustering")
+        ax.set_title(r"Number of data for each label")
+        ax.set_xlabel(r"Unsupervised Labels")
         plt.tight_layout()
+        plt.axhline(0, color='black', linewidth=2)
+        plt.axhline(1, color='black', linewidth=2)
         plt.savefig(self.filepath_part + "_cm_sc.png", transparent=True, dpi=300)
         plt.close()
 
