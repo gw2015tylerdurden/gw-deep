@@ -17,12 +17,12 @@ class SimilarityMatrix():
         """
         Let argmax of a element of colmun be correct label
         """
-        indices = np.argmax(self.cm, axis=0)
+        indices = np.argmax(self.cmn, axis=0)
         n_true = 0
         for l, m in enumerate(indices):
-            cmi = self.cm[:, l]
+            cmi = self.cmn[:, l]
             n_true += cmi[m]
-        sc_acc = n_true / self.cm.sum()
+        sc_acc = n_true / self.cmn.sum()
         return sc_acc
 
     # not yet...
@@ -91,44 +91,58 @@ class SimilarityMatrix():
         plt.savefig(self.filepath_part + f"_simrank.png", transparent=True, dpi=300)
         plt.close()
 
-    def plot_predicted_similarity_class(self, dataset, sample_top_similarity_num=5):
+    def plot_predicted_similarity_class(self, dataset, is_plot_worse=False, sample_top_similarity_num=10):
         # random sample each pred class, [[0, data idx], ..., [C, data idx]]
         #sample_each_pred_class = F.sample_from_each_class(self.pred_sc_labels, 1, np.random.randint(0, 256))
 
         cossim = torch.nn.CosineSimilarity(dim=0)
-        for new_label_num in range(self.num_classes_expected):
-            if new_label_num % 5 == 0:
-                fig, ax = plt.subplots(nrows=sample_top_similarity_num, ncols=sample_top_similarity_num)
+        target_indices = []
+        similarity_each_newclass =[]
 
+        for new_label_num in range(self.num_classes_expected):
             new_label_dataset = np.where(self.pred_sc_labels == new_label_num)[0] # for 1 dimension[0]
             # select target rondomly
             random.seed()
             target_idx = random.choice(new_label_dataset)
+            target_indices.append(target_idx)
+
             target_affinity_vector = torch.from_numpy(self.affinity_matrix[target_idx, :])
             # find similarity indices of tatgrt_affinity_vector
-            affinity_ordered_newclass = []
+            similarity_newclass = []
             for idx, dataset_idx in enumerate(new_label_dataset):
                 affinity_vector = torch.from_numpy(self.affinity_matrix[dataset_idx, :])
                 cosine_similarity = cossim(affinity_vector, target_affinity_vector)
+                similarity_newclass.append((dataset_idx, cosine_similarity))
 
-                affinity_ordered_newclass.append((dataset_idx, cosine_similarity))
-                #affinity_dataset_ordered = sorted(affinity_dataset_ordered, key=lambda x: x[1])
-                affinity_ordered_newclass.sort(key=lambda x: x[1], reverse=True)
+            similarity_each_newclass.append(similarity_newclass)
 
+        # plot from best similarity
+        for new_label_num, target_idx in enumerate(target_indices):
+            if new_label_num % 5 == 0:
+                fig, ax = plt.subplots(nrows=5, ncols=sample_top_similarity_num)
+
+            similarity_ordered_newclass = similarity_each_newclass[new_label_num]
+            similarity_ordered_newclass.sort(key=lambda x: x[1], reverse=True)
             cols = new_label_num % 5
+            same_sim_for_not_plot = []
             sample = 0
             for idx in range(sample_top_similarity_num):
-                # 0 is sample, 1 is most sim, 2 is 0.9 sim, ...
-                sample = idx
-                if idx > 1:
-                    target_similarity_value = 1.0 - (0.1 * idx)
-                    while(affinity_ordered_newclass[sample][1] > target_similarity_value):
+                if idx == 0:
+                    x, _ = dataset[target_idx]
+                else:
+                    sample = idx
+                    round_sim = np.round(similarity_ordered_newclass[sample][1].numpy().astype(float), 3)
+                    while round_sim in same_sim_for_not_plot:
                         sample += 1
-                        if sample == len(affinity_ordered_newclass):
+                        if sample == len(similarity_ordered_newclass):
                             sample = idx
-                            break
+                            break;
+                        round_sim = np.round(similarity_ordered_newclass[sample][1].numpy().astype(float), 3)
 
-                x, _ = dataset[affinity_ordered_newclass[sample][0]]
+                    # do not plot same similarity
+                    same_sim_for_not_plot.append(round_sim)
+                    x, _ = dataset[similarity_ordered_newclass[sample][0]]
+
                 # plot 0.5sec glitch
                 ax[cols, idx].imshow(x[0])
                 ax[cols, idx].axis("off")
@@ -137,29 +151,72 @@ class SimilarityMatrix():
                 if idx == 0:
                     # target of new label data
                     #ax.set_title(r"$x_{(%d)}$" % dataset_idx)
-                    ax[cols, idx].set_title(r"$label {(%d)}$" % new_label_num, fontsize=17)
+                    ax[cols, idx].set_title(r"$label {(%d)}$" % new_label_num, fontsize=12)
                 else:
                     # similarity data of target class
                     # ax[cols, idx].set_title(r"data id[%d] %.2f" % (affinity_dataset_ordered[idx][0], affinity_dataset_ordered[idx][1]))
-                    ax[cols, idx].set_title(r"sim %.2f" % (affinity_ordered_newclass[sample][1]), fontsize=17)
+                    ax[cols, idx].set_title(r"sim %.2f" % (similarity_ordered_newclass[sample][1]), fontsize=12)
 
+            plt.subplots_adjust(wspace=0.1, top=0.92, bottom=0.05, left=0.05, right=0.95)
             if new_label_num % 5 == 4:
-                plt.subplots_adjust(wspace=0.05, top=0.92, bottom=0.05, left=0.05, right=0.95)
                 plt.savefig(self.filepath_part + f"_new_label_similar{new_label_num // 5}.png", transparent=True, dpi=300)
                 plt.close()
             elif new_label_num == (self.num_classes_expected - 1):
-                plt.subplots_adjust(wspace=0.05, top=0.92, bottom=0.05, left=0.05, right=0.95)
                 plt.savefig(self.filepath_part + f"_new_label_similar{(new_label_num // 5) + 1}.png", transparent=True, dpi=300)
                 plt.close()
+
+        # plot from worse similarity
+        if is_plot_worse:
+            for new_label_num, target_idx in enumerate(target_indices):
+                if new_label_num % 5 == 0:
+                    fig, ax = plt.subplots(nrows=5, ncols=sample_top_similarity_num)
+
+                # for worse
+                similarity_ordered_newclass = similarity_each_newclass[new_label_num]
+                similarity_ordered_newclass.sort(key=lambda x: x[1], reverse=False)
+
+                acronym_label = np.array([F.acronym(target) for target in self.target_labels_name])
+                mean_sim_from_target = np.mean(np.array(similarity_ordered_newclass)[:,1])
+                std_sim_from_target = np.std(np.array(similarity_ordered_newclass)[:,1])
+                cols = new_label_num % 5
+                for idx in range(sample_top_similarity_num):
+                    if idx == 0:
+                        x, _ = dataset[target_idx]
+                    else:
+                        x, _ = dataset[similarity_ordered_newclass[idx][0]]
+
+                    # plot 0.5sec glitch
+                    ax[cols, idx].imshow(x[0])
+                    ax[cols, idx].axis("off")
+                    ax[cols, idx].margins(0)
+
+                    if idx == 0:
+                        name = acronym_label[self.true_label[target_idx]]
+                        # target of new label data
+                        #ax[cols, idx].set_title(f"{(new_label_num)} {name}\n $\mu$ {mean_sim_from_target:.2f}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)
+                        #ax[cols, idx].set_title(f"{(new_label_num)} {name}", fontsize=11)
+                        ax[cols, idx].set_title(f"{name}", fontsize=11)
+                        ax[cols, idx].set_ylabel(f"label({new_label_num})", fontsize=11)
+                    else:
+                        name = acronym_label[self.true_label[similarity_ordered_newclass[idx][0]]]
+                        sim = similarity_ordered_newclass[idx][1]
+                        # similarity data of target class
+                        ax[cols, idx].set_title(f"{name}\n sim{sim:.2e}", fontsize=11)
+
+                plt.subplots_adjust(wspace=0.1, top=0.92, bottom=0.05, left=0.05, right=0.95)
+                if new_label_num % 5 == 4:
+                    plt.savefig(self.filepath_part + f"_new_label_similar_worse{new_label_num // 5}.png", transparent=True, dpi=300)
+                    plt.close()
+                elif new_label_num == (self.num_classes_expected - 1):
+                    plt.savefig(self.filepath_part + f"_new_label_similar_worse{(new_label_num // 5) + 1}.png", transparent=True, dpi=300)
+                    plt.close()
 
 
     def __init__(self, pred_y, true_y, output_filepath, num_classes, num_samples, labels, top_accuracy_classifier_id=0, random_state=123, is_acronym=False):
         self.num_classes_expected = num_classes
         self.filepath_part = output_filepath
-        if is_acronym:
-            self.target_labels_name = np.array([F.acronym(target) for target in labels])
-        else:
-            self.target_labels_name = labels
+        self.true_label = true_y
+        self.target_labels_name = labels
 
         self.__calculate_confusion_matrix(pred_y, true_y, num_samples, random_state)
 
@@ -214,38 +271,47 @@ class SimilarityMatrix():
         self.cmn = normalize(cm, axis=0)
 
     def _plot_sc_confusion_matrix(self):
+        #fig, ax = plt.subplots(figsize=(15, 10))
         fig, ax = plt.subplots()
-        # classified datanum of each label
-        datanum_each_label = [str(i) for i in self.cm.sum(axis=0)]
-
-        # add row
-        plot_data = np.insert(self.cmn, 0, np.zeros(len(datanum_each_label)), axis=0)
-        plot_labels = np.insert(self.target_labels_name, 0, '')
 
         threshold_plot_rate = 0.1
         round_rate = np.round(self.cmn, decimals=2)
-        annot_str = np.where(round_rate >= threshold_plot_rate, round_rate, '')
-        annot_str = np.insert(annot_str, 0, datanum_each_label, axis=0)
+        annot_str = np.where(round_rate != 0, round_rate, '')
+
+        plot_indecies = [0, 13, 15, 26, 34, 35]
+        for i in range(len(annot_str)):
+            for j in range(self.num_classes_expected):
+                if j in plot_indecies:
+                    continue
+                else:
+                    annot_str[i][j] = ''
+
         seaborn.heatmap(
-            data=plot_data,
+            data=self.cmn,
             ax=ax,
             #annot=self.cmn*self.cmn,
             annot=annot_str,
-            annot_kws={"fontsize": 8},
+            annot_kws={"fontsize": 9.5},
             #fmt=".1f",
             fmt='',
             linewidths=0.1,
             cmap="Greens",
-            cbar=True,
-            cbar_kws={"aspect": 50, "pad": 0.01, "anchor": (0, 0.05)},
-            yticklabels=plot_labels,
+            cbar=False,
+            #cbar_kws={"aspect": 50, "pad": 0.01, "anchor": (0, 0.05), "use_gridspec": False, "location": 'bottom'},
+            yticklabels=self.target_labels_name,
             xticklabels=np.arange(self.num_classes_expected),
+            #square=True,
         )
-        ax.set_title(r"Number of data for each label")
         ax.set_xlabel(r"Unsupervised Labels")
+
+        ax2 = ax.twiny()
+        ax2.set_xlabel(r"Number of data for each Unsupervised label")
+        #ax2.set_xticks(np.arange(self.num_classes_expected))
+        ax2.set_xticks(np.linspace(0.5, self.num_classes_expected, self.num_classes_expected, endpoint=False))
+        # classified datanum of each label
+        ax2.set_xticklabels([str(datanum) for datanum in self.cm.sum(axis=0)], rotation=90)
+
         plt.tight_layout()
-        plt.axhline(0, color='black', linewidth=2)
-        plt.axhline(1, color='black', linewidth=2)
         plt.savefig(self.filepath_part + "_cm_sc.png", transparent=True, dpi=300)
         plt.close()
 

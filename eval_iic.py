@@ -155,8 +155,6 @@ def main(args):
 
     target_transform = transforms.ToIndex(args.labels)
 
-    num_classes = len(args.labels)
-
     dataset = datasets.HDF5(args.dataset_path, transform=transform, target_transform=target_transform)
 
     test_loader = torch.utils.data.DataLoader(
@@ -207,6 +205,7 @@ def main(args):
     y = torch.cat(y).cpu().numpy().astype(int) # shape(N) ([ 0,  0,  0, ..., 21, 21, 21]) , not same class num
     accuracies = []
     hyper_graph = []
+    print("")
     for i in range(args.num_heads):
         py_i, pw_i = py[:, i], pw[:, i]
         # cut y_true axis by arg.labels. [: len(args.labels), :]
@@ -228,11 +227,10 @@ def main(args):
     # cosine similarity
     simmat = sm.SimilarityMatrix(classifiers_output_probability, y, figure_output_dir + '/' + figure_model_epoch, args.num_classes, num_samples, args.labels, np.argmax(accuracies), args.random_state)
     #simmat = sm.SimilarityMatrix(hyper_graph, y, figure_output_dir + '/' + figure_model_epoch, args.num_classes, num_samples, args.labels, np.argmax(accuracies), args.random_state)
-    print("")
     print(f"sc_acc= {simmat.get_accuracy()}")
     simmat.plot_results()
     #simmat.plot_similarity_class(test_set)
-    simmat.plot_predicted_similarity_class(dataset)
+    simmat.plot_predicted_similarity_class(dataset, is_plot_worse=True)
 
 
     # preliminary
