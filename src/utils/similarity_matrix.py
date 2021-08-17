@@ -94,7 +94,7 @@ class SimilarityMatrix():
     def plot_predicted_similarity_class(self, dataset, is_plot_worse=False, sample_top_similarity_num=10):
         # random sample each pred class, [[0, data idx], ..., [C, data idx]]
         #sample_each_pred_class = F.sample_from_each_class(self.pred_sc_labels, 1, np.random.randint(0, 256))
-
+        acronym_label = np.array([F.acronym(target) for target in self.target_labels_name])
         cossim = torch.nn.CosineSimilarity(dim=0)
         target_indices = []
         similarity_each_newclass =[]
@@ -123,6 +123,9 @@ class SimilarityMatrix():
 
             similarity_ordered_newclass = similarity_each_newclass[new_label_num]
             similarity_ordered_newclass.sort(key=lambda x: x[1], reverse=True)
+
+            mean_sim_from_target = np.mean(np.array(similarity_ordered_newclass)[:,1])
+            std_sim_from_target = np.std(np.array(similarity_ordered_newclass)[:,1])
             cols = new_label_num % 5
             same_sim_for_not_plot = []
             sample = 0
@@ -150,14 +153,27 @@ class SimilarityMatrix():
 
                 if idx == 0:
                     # target of new label data
-                    #ax.set_title(r"$x_{(%d)}$" % dataset_idx)
-                    ax[cols, idx].set_title(r"$label {(%d)}$" % new_label_num, fontsize=12)
+                    # original
+                    #ax[cols, idx].set_title(f"label{(new_label_num)}\n {name}", fontsize=11)
+                    #ax[cols, idx].set_title(f"{(new_label_num)} {name}\n $\mu$ {mean_sim_from_target:.2f}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)
+
+                    ## tmp
+                    name = acronym_label[self.true_label[target_idx]]
+                    ax[cols, idx].set_title(f"{(new_label_num)} {name}\n $\mu$ {mean_sim_from_target:.2f}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)                    
+
                 else:
                     # similarity data of target class
                     # ax[cols, idx].set_title(r"data id[%d] %.2f" % (affinity_dataset_ordered[idx][0], affinity_dataset_ordered[idx][1]))
-                    ax[cols, idx].set_title(r"sim %.2f" % (similarity_ordered_newclass[sample][1]), fontsize=12)
+                    #ax[cols, idx].set_title(r"sim %.2f" % (similarity_ordered_newclass[sample][1]), fontsize=12)
 
-            plt.subplots_adjust(wspace=0.1, top=0.92, bottom=0.05, left=0.05, right=0.95)
+                    ## tmp
+                    name = acronym_label[self.true_label[similarity_ordered_newclass[idx][0]]]
+                    sim = similarity_ordered_newclass[idx][1]
+                    ax[cols, idx].set_title(f"{name}\n sim{sim:.2e}", fontsize=11)
+
+
+            #plt.subplots_adjust(wspace=0.1, top=0.8, bottom=0.05, left=0.05, right=0.95)
+            plt.subplots_adjust(wspace=0.1, top=0.92, bottom=0.05, left=0.05, right=0.95)            
             if new_label_num % 5 == 4:
                 plt.savefig(self.filepath_part + f"_new_label_similar{new_label_num // 5}.png", transparent=True, dpi=300)
                 plt.close()
@@ -175,7 +191,6 @@ class SimilarityMatrix():
                 similarity_ordered_newclass = similarity_each_newclass[new_label_num]
                 similarity_ordered_newclass.sort(key=lambda x: x[1], reverse=False)
 
-                acronym_label = np.array([F.acronym(target) for target in self.target_labels_name])
                 mean_sim_from_target = np.mean(np.array(similarity_ordered_newclass)[:,1])
                 std_sim_from_target = np.std(np.array(similarity_ordered_newclass)[:,1])
                 cols = new_label_num % 5
@@ -193,10 +208,9 @@ class SimilarityMatrix():
                     if idx == 0:
                         name = acronym_label[self.true_label[target_idx]]
                         # target of new label data
-                        #ax[cols, idx].set_title(f"{(new_label_num)} {name}\n $\mu$ {mean_sim_from_target:.2f}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)
-                        #ax[cols, idx].set_title(f"{(new_label_num)} {name}", fontsize=11)
-                        ax[cols, idx].set_title(f"{name}", fontsize=11)
-                        ax[cols, idx].set_ylabel(f"label({new_label_num})", fontsize=11)
+                        ax[cols, idx].set_title(f"{(new_label_num)} {name}\n $\mu$ {mean_sim_from_target:.2f}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)
+                        #ax[cols, idx].set_title(f"label{(new_label_num)}\n {name}", fontsize=11)
+
                     else:
                         name = acronym_label[self.true_label[similarity_ordered_newclass[idx][0]]]
                         sim = similarity_ordered_newclass[idx][1]
@@ -307,7 +321,7 @@ class SimilarityMatrix():
         ax2 = ax.twiny()
         ax2.set_xlabel(r"Number of data for each Unsupervised label")
         #ax2.set_xticks(np.arange(self.num_classes_expected))
-        ax2.set_xticks(np.linspace(0.5, self.num_classes_expected, self.num_classes_expected, endpoint=False))
+        ax2.set_xticks(np.linspace(0.5, self.num_classes_expected, self.num_classes_expected))
         # classified datanum of each label
         ax2.set_xticklabels([str(datanum) for datanum in self.cm.sum(axis=0)], rotation=90)
 
