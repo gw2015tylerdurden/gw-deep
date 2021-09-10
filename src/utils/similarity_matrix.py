@@ -139,7 +139,7 @@ class SimilarityMatrix():
                         sample += 1
                         if sample == len(similarity_ordered_newclass):
                             sample = idx
-                            break;
+                            break
                         round_sim = np.round(similarity_ordered_newclass[sample][1].numpy().astype(float), 3)
 
                     # do not plot same similarity
@@ -153,27 +153,18 @@ class SimilarityMatrix():
 
                 if idx == 0:
                     # target of new label data
-                    # original
-                    #ax[cols, idx].set_title(f"label{(new_label_num)}\n {name}", fontsize=11)
-                    #ax[cols, idx].set_title(f"{(new_label_num)} {name}\n $\mu$ {mean_sim_from_target:.2f}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)
-
-                    ## tmp
                     name = acronym_label[self.true_label[target_idx]]
-                    ax[cols, idx].set_title(f"{(new_label_num)} {name}\n $\mu$ {mean_sim_from_target:.2f}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)                    
+                    ax[cols, idx].set_title(f"class {(new_label_num)} {name}\n $\mu$ {mean_sim_from_target:.2e}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)
 
                 else:
                     # similarity data of target class
-                    # ax[cols, idx].set_title(r"data id[%d] %.2f" % (affinity_dataset_ordered[idx][0], affinity_dataset_ordered[idx][1]))
-                    #ax[cols, idx].set_title(r"sim %.2f" % (similarity_ordered_newclass[sample][1]), fontsize=12)
-
-                    ## tmp
-                    name = acronym_label[self.true_label[similarity_ordered_newclass[idx][0]]]
-                    sim = similarity_ordered_newclass[idx][1]
+                    name = acronym_label[self.true_label[similarity_ordered_newclass[sample][0]]]
+                    sim = similarity_ordered_newclass[sample][1]
                     ax[cols, idx].set_title(f"{name}\n sim{sim:.2e}", fontsize=11)
 
 
             #plt.subplots_adjust(wspace=0.1, top=0.8, bottom=0.05, left=0.05, right=0.95)
-            plt.subplots_adjust(wspace=0.1, top=0.92, bottom=0.05, left=0.05, right=0.95)            
+            plt.subplots_adjust(wspace=0.1, top=0.92, bottom=0.05, left=0.05, right=0.95)
             if new_label_num % 5 == 4:
                 plt.savefig(self.filepath_part + f"_new_label_similar{new_label_num // 5}.png", transparent=True, dpi=300)
                 plt.close()
@@ -208,7 +199,7 @@ class SimilarityMatrix():
                     if idx == 0:
                         name = acronym_label[self.true_label[target_idx]]
                         # target of new label data
-                        ax[cols, idx].set_title(f"{(new_label_num)} {name}\n $\mu$ {mean_sim_from_target:.2f}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)
+                        ax[cols, idx].set_title(f"class {(new_label_num)} {name}\n $\mu$ {mean_sim_from_target:.2f}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)
                         #ax[cols, idx].set_title(f"label{(new_label_num)}\n {name}", fontsize=11)
 
                     else:
