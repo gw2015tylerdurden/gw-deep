@@ -78,10 +78,10 @@ def seriation(Z, N, cur_index):
 def compute_serial_matrix(X, method="ward"):
     """
     input:
-        - X is a square matrix.
+        - dist_mat is a distance matrix
         - method = ["ward","single","average","complete"]
     output:
-        - seriated_dist is the input matrix,
+        - seriated_dist is the input dist_mat,
           but with re-ordered rows and columns
           according to the seriation, i.e. the
           order implied by the hierarchical tree
@@ -93,16 +93,14 @@ def compute_serial_matrix(X, method="ward"):
     a sorted distance matrix according to the order implied
     by the hierarchical tree (dendrogram)
     """
-    N = len(X)
-    seriated_dist = np.zeros((N, N))
-
-    # get condenced distance matrix(shape is vector[N*(N+1)//2 - N]) from distance matrix(X)
-    # note:squareform(pdist(X)) returns symmetry matrix which diagonals are 0
-    condence_distance_matrix = pdist(X)
-    res_linkage = linkage(condence_distance_matrix, method=method, preserve_input=True)
+    dist_mat = squareform(pdist(X))
+    N = len(dist_mat)
+    flat_dist_mat = squareform(dist_mat)
+    res_linkage = linkage(flat_dist_mat, method=method, preserve_input=True)
     res_order = seriation(res_linkage, N, N + N - 2)
+    seriated_dist = np.zeros((N, N))
     a, b = np.triu_indices(N, k=1)
-    seriated_dist[a, b] = X[[res_order[i] for i in a], [res_order[j] for j in b]]
+    seriated_dist[a, b] = dist_mat[[res_order[i] for i in a], [res_order[j] for j in b]]
     seriated_dist[b, a] = seriated_dist[a, b]
 
     return seriated_dist, res_order, res_linkage
@@ -111,21 +109,21 @@ def cosine_similarity(x):
     x = x / x.norm(dim=-1)[:, None]
     return torch.mm(x, x.transpose(0, 1))
 
-def sample_from_each_class(pred_y_labels, sample_top_similarity_num=10, random_seed=42):
-    uniq_levels = np.unique(pred_y_labels)
-    uniq_counts = {level: sum(pred_y_labels == level) for level in uniq_levels}
+def sample_from_each_class(y, num_samples=10, random_seed=42):
+    uniq_levels = np.unique(y)
+    uniq_counts = {level: sum(y == level) for level in uniq_levels}
 
-    if random_seed is not None:
+    if not random_seed is None:
         np.random.seed(random_seed)
 
     # find observation index of each class levels
     groupby_levels = {}
-    for _, level in enumerate(uniq_levels):
-        obs_idx = [idx for idx, val in enumerate(pred_y_labels) if val == level]
+    for ii, level in enumerate(uniq_levels):
+        obs_idx = [idx for idx, val in enumerate(y) if val == level]
         groupby_levels[level] = obs_idx
     # oversampling on observations of each label
     balanced = {}
     for level, gb_idx in groupby_levels.items():
-        indices = np.random.choice(gb_idx, size=sample_top_similarity_num, replace=True).tolist()
+        indices = np.random.choice(gb_idx, size=num_samples, replace=True).tolist()
         balanced[level] = indices
     return balanced
