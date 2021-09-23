@@ -64,7 +64,8 @@ def main(args):
     else:
         device = torch.device("cpu")
 
-    model = models.VAE(args.in_channels, args.z_dim, is_output_gaussian=True).to(device)
+    model = models.VAE(args.in_channels, args.z_dim, is_output_gaussian=False).to(device)
+    #model = models.VAE(args.in_channels, args.z_dim, is_output_gaussian=True).to(device)
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
     # cwd is hydra.run.dir in yaml config
     args.wandb.cwd = model_dir = os.getcwd() + '/' + args.model_dir

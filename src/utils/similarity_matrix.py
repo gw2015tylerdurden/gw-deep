@@ -160,7 +160,8 @@ class SimilarityMatrix():
                     # similarity data of target class
                     name = acronym_label[self.true_label[similarity_ordered_newclass[sample][0]]]
                     sim = similarity_ordered_newclass[sample][1]
-                    ax[cols, idx].set_title(f"{name}\n sim{sim:.2e}", fontsize=11)
+                    # plot original name, original index, and similarity to the target
+                    ax[cols, idx].set_title(f"{name} {similarity_ordered_newclass[sample][0]}\n sim{sim:.2e}", fontsize=11)
 
 
             #plt.subplots_adjust(wspace=0.1, top=0.8, bottom=0.05, left=0.05, right=0.95)
@@ -203,10 +204,11 @@ class SimilarityMatrix():
                         #ax[cols, idx].set_title(f"label{(new_label_num)}\n {name}", fontsize=11)
 
                     else:
+                        # similarity data of target class
                         name = acronym_label[self.true_label[similarity_ordered_newclass[idx][0]]]
                         sim = similarity_ordered_newclass[idx][1]
-                        # similarity data of target class
-                        ax[cols, idx].set_title(f"{name}\n sim{sim:.2e}", fontsize=11)
+                        # plot original name, original index, and similarity to the target
+                        ax[cols, idx].set_title(f"{name} {similarity_ordered_newclass[idx][0]} \n sim{sim:.2e}", fontsize=11)
 
                 plt.subplots_adjust(wspace=0.1, top=0.92, bottom=0.05, left=0.05, right=0.95)
                 if new_label_num % 5 == 4:
@@ -283,7 +285,7 @@ class SimilarityMatrix():
         round_rate = np.round(self.cmn, decimals=2)
         annot_str = np.where(round_rate != 0, round_rate, '')
 
-        plot_indecies = [0, 13, 15, 26, 34, 35]
+        plot_indecies = [0, 13, 26, 34, 35]
         for i in range(len(annot_str)):
             for j in range(self.num_classes_expected):
                 if j in plot_indecies:
