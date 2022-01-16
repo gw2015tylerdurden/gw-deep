@@ -154,7 +154,7 @@ class SimilarityMatrix():
                 if idx == 0:
                     # target of new label data
                     name = acronym_label[self.true_label[target_idx]]
-                    ax[cols, idx].set_title(f"class {(new_label_num)} {name}\n $\mu$ {mean_sim_from_target:.2e}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)
+                    ax[cols, idx].set_title(f"({new_label_num}) {name} {target_idx}\n $\mu$ {mean_sim_from_target:.2e}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)
 
                 else:
                     # similarity data of target class
@@ -200,8 +200,7 @@ class SimilarityMatrix():
                     if idx == 0:
                         name = acronym_label[self.true_label[target_idx]]
                         # target of new label data
-                        ax[cols, idx].set_title(f"class {(new_label_num)} {name}\n $\mu$ {mean_sim_from_target:.2f}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)
-                        #ax[cols, idx].set_title(f"label{(new_label_num)}\n {name}", fontsize=11)
+                        ax[cols, idx].set_title(f"({new_label_num}) {name} {target_idx}\n $\mu$ {mean_sim_from_target:.2f}:$\sigma$ {std_sim_from_target:.2f}", fontsize=11)
 
                     else:
                         # similarity data of target class
@@ -285,13 +284,23 @@ class SimilarityMatrix():
         round_rate = np.round(self.cmn, decimals=2)
         annot_str = np.where(round_rate != 0, round_rate, '')
 
-        plot_indecies = [0, 13, 26, 34, 35]
+        plot_indecies = [0, 13, 26, 32, 34, 35]
         for i in range(len(annot_str)):
             for j in range(self.num_classes_expected):
                 if j in plot_indecies:
                     continue
                 else:
+                    # remove annotation
                     annot_str[i][j] = ''
+
+        # plot data number in original class
+        each_number_gravity_spy_label = [328, 232, 58, 1869, 66, 454, 279,
+                                         830, 573, 657, 453, 181, 88, 27,
+                                         453, 285, 459, 354, 116, 472, 44, 305]
+
+        target_labels_name_with_number = []
+        for i, label_name in enumerate (self.target_labels_name):
+            target_labels_name_with_number.append(label_name + ', ' + str(each_number_gravity_spy_label[i]))
 
         seaborn.heatmap(
             data=self.cmn,
@@ -305,7 +314,8 @@ class SimilarityMatrix():
             cmap="Greens",
             cbar=False,
             #cbar_kws={"aspect": 50, "pad": 0.01, "anchor": (0, 0.05), "use_gridspec": False, "location": 'bottom'},
-            yticklabels=self.target_labels_name,
+            #yticklabels=self.target_labels_name,
+            yticklabels=target_labels_name_with_number,
             xticklabels=np.arange(self.num_classes_expected),
             #square=True,
         )
