@@ -65,7 +65,7 @@ class VAE(BaseModule):
         # Minibatch size, Channels, Height, Width
         M, C, H, W = x.shape
         # divided only M, not C,H,W. MSE value should be a distance in R^{C*H*W}
-        return 0.5 * torch.sum((x_rec - x) ** 2) / M
+        return torch.sum((x_rec - x) ** 2) / M
 
     def gaussian(self, x: torch.Tensor, mean: torch.Tensor, logvar: torch.Tensor):
         r"""

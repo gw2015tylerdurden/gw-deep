@@ -25,23 +25,6 @@ class SimilarityMatrix():
         sc_acc = n_true / self.cmn.sum()
         return sc_acc
 
-    # not yet...
-    def _get_precision(self):
-        indices = np.argmax(self.cmn, axis=1)
-        precision = []
-        for i in range(indices):
-            coli = self.cmn[:, i]
-            precision.append(coli / coli.sum())
-        return precision
-
-    def _get_recall(self):
-        indices = np.argmax(self.cmn, axis=0)
-        recall = []
-        for i in range(indices):
-            rowi = self.cmn[i, :]
-            recall.append(rowi / rowi.sum())
-        return recall
-
     def plot_results(self):
         self._plot_sc_confusion_matrix()
         self._plot_matirx(self.affinity_matrix, "affinity")
@@ -233,19 +216,20 @@ class SimilarityMatrix():
                                 random_state=random_state,
                                 assign_labels="discretize",
                                 # assign_labels="kmeans",
-                                affinity="rbf")
+                                affinity="rbf"
+                                #affinity=self.affinity_matrix
+                                )
         spectral_cluster = sc.fit(concat_predicted_matrix_dataset)
         # affinity_matrix_.shape is [N, N]
         self.affinity_matrix = spectral_cluster.affinity_matrix_
-        # plot eigenvalue, not neccesary
-        #eigs, eigv = scipy.linalg.eigh(self.affinity_matrix)
-        #self._plot_eigenvalues_similarity_matrix(eigs)
+        # plot eigenvalue
+        eigs, eigv = scipy.linalg.eigh(self.affinity_matrix)
+        self._plot_eigenvalues_similarity_matrix(eigs)
 
         # shape is [N, ]. array values are new class id.
         self.pred_sc_labels = spectral_cluster.labels_
         # confusion matrix is square [num_classes, num_classes]
         cm_squared = confusion_matrix(true_y, self.pred_sc_labels, labels=list(range(self.num_classes_expected)))
-        # self.cm = cm_squared[np.nonzero(np.isin(np.arange(self.num_classes), true_y))[0], :]
         # changes row num of cm to num of gravity spy labels, [22, num_classes]
         self.cm = cm_squared[:len(self.target_labels_name), :]
         #self.cmn = normalize(self.cm, norm='l2', axis=0)
@@ -256,7 +240,7 @@ class SimilarityMatrix():
     def __old_calculate_confusion_matrix(self, pred_y, true_y, num_samples, random_state):
         # make hyper_graph from output of classifiers. shape [dataset N, heads*self.num_classes]
         concat_predicted_matrix_dataset = torch.cat(pred_y).view(num_samples, -1).cpu().numpy().astype(float)
-        # make inferenced square matrix using cosine similarity. shape[N, N]
+
         inferenced_square_matrix = F.cosine_similarity(torch.from_numpy(concat_predicted_matrix_dataset)).numpy()
         # eigenvalue and eigenvector
         eigs, eigv = scipy.linalg.eigh(inferenced_square_matrix)
@@ -278,7 +262,7 @@ class SimilarityMatrix():
 
     def _plot_sc_confusion_matrix(self):
         #fig, ax = plt.subplots(figsize=(15, 10))
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(15, 10))
 
         threshold_plot_rate = 0.1
         round_rate = np.round(self.cmn, decimals=2)
@@ -312,7 +296,7 @@ class SimilarityMatrix():
             fmt='',
             linewidths=0.1,
             cmap="Greens",
-            cbar=False,
+            #cbar=False,
             #cbar_kws={"aspect": 50, "pad": 0.01, "anchor": (0, 0.05), "use_gridspec": False, "location": 'bottom'},
             #yticklabels=self.target_labels_name,
             yticklabels=target_labels_name_with_number,
@@ -320,11 +304,12 @@ class SimilarityMatrix():
             #square=True,
         )
         ax.set_xlabel(r"Unsupervised Labels")
+        ax.set_ylabel(r"Supervised Labels")
 
         ax2 = ax.twiny()
         ax2.set_xlabel(r"Number of data for each Unsupervised label")
         #ax2.set_xticks(np.arange(self.num_classes_expected))
-        ax2.set_xticks(np.linspace(0.5, self.num_classes_expected, self.num_classes_expected))
+        ax2.set_xticks(np.linspace(0.3, self.num_classes_expected, self.num_classes_expected))
         # classified datanum of each label
         ax2.set_xticklabels([str(datanum) for datanum in self.cm.sum(axis=0)], rotation=90)
 
